@@ -1,0 +1,2 @@
+[centos]
+192.168.10.131 test ip ansible_connection=ssh ansible_ssh_user=test ansible_ssh_pass=redhat8
