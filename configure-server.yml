@@ -23,7 +23,7 @@
       state: started
   - name: Install MySQL
     yum:
-      name:  mysql-server.x86_64
+      name: mysql-server.x86_64
   - name: start mysql
     service:
       name: mysqld.service
@@ -45,5 +45,5 @@
       state: restarted
   - name: Copying your php file in the /var/www/html
     copy:
-      src: /root/ansibleplaybook/index.php
+      src: /root/index.php
       dest: /var/www/
