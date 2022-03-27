@@ -47,3 +47,8 @@
     copy:
       src: /root/index.php
       dest: /var/www/
+  - name: Check the page
+    url:
+      src: http://192.168.10.131/index.php
+      method: GET
+      status_code: 200
