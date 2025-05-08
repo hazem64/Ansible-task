@@ -1,0 +1,73 @@
+name: Build and Push to ECR
+ 
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches:
+       - master
+    #    - dev
+ 
+jobs:
+  build:
+    name: Build and Push Docker Image to ECR
+    runs-on: ubuntu-latest
+ 
+    env:
+      AWS_REGION: me-central-1
+      REPO_NAME: coralytics-small-model
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      IMAGE_TAG: latest
+ 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+ 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+ 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+ 
+      - name: Build, tag, and push docker image to Amazon ECR
+        id: build-image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build \
+            -t $REGISTRY/${{ env.REPO_NAME }}:${{ env.IMAGE_TAG }} \
+            -t $REGISTRY/${{ env.REPO_NAME }}:${{ github.sha }} \
+            .
+ 
+          docker push $REGISTRY/${{ env.REPO_NAME }}:${{ github.sha }}
+          docker push $REGISTRY/${{ env.REPO_NAME }}:${{ env.IMAGE_TAG }}
+ 
+          echo "image=$REGISTRY/${{ env.REPO_NAME }}:${{ env.IMAGE_TAG }}" >> "$GITHUB_OUTPUT"
+      - name: Setup SSH for GitOps push
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GIT_SSH_KEY }}
+ 
+      - name: Clone GitOps repo
+        run: |
+          git clone git@github.com:cloudsoftway/coralytics-app-config.git gitops
+ 
+      - name: Update image tag in values.yaml
+        run: |
+          cd gitops
+          git config user.name "CI Bot"
+          git config user.email "ci-bot@example.com"
+ 
+          # Update image tag (adjust path as needed)
+          sed -i "s/tag: .*/tag: \"${GITHUB_SHA}\"/" charts/small-model/values.yaml
+ 
+          git add charts/small-model/values.yaml
+          git commit -m "Update image tag to ${GITHUB_SHA}"
+          git push origin main
+ 
